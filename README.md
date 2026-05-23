@@ -100,3 +100,26 @@ POST /complete
 - Anthropic API key (required)
 - OpenAI API key (optional, enables GPT routing)
 - Groq API key (optional, enables cheapest tier)
+
+---
+
+## Get the Complete Bundle
+
+All 5 templates are available individually or as a **$39 bundle** (saves $15 vs individual).
+
+| Template | Price | Link |
+|----------|-------|------|
+| Slack → Notion Automation | $9 | [Buy on Gumroad](https://reactance0083.gumroad.com/l/slack-notion-pydantic-ai) |
+| GitHub Issue → Linear Triage | $9 | [Buy on Gumroad](https://reactance0083.gumroad.com/l/github-linear-triage-pydantic-ai) |
+| Multi-LLM Cost Optimizer | $12 | [Buy on Gumroad](https://reactance0083.gumroad.com/l/multi-llm-cost-optimizer) |
+| Web Scraper + Semantic Search | $9 | [Buy on Gumroad](https://reactance0083.gumroad.com/l/web-scraper-semantic-search-pydantic-ai) |
+| Prompt Engineering Runbook | $15 | [Buy on Gumroad](https://reactance0083.gumroad.com/l/prompt-engineering-runbook-pydantic-ai) |
+| **Complete Bundle (all 5)** | **$39** | [Buy on Gumroad](https://reactance0083.gumroad.com/l/pydantic-ai-fastapi-bundle) |
+
+Buying includes: all source files, README, requirements.txt, .env.example, and lifetime updates.
+
+> **Free to use** — the source is here on GitHub. Buying supports continued development and gets you a clean download with everything packaged.
+
+---
+
+*Built by [Wade Allen](https://github.com/Reactance0083) — AI Workflow Architect*
