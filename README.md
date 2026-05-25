@@ -94,6 +94,19 @@ POST /complete
   → cost calculation → response + /stats update
 ```
 
+## Health Check
+
+```bash
+curl http://localhost:8002/health
+```
+
+Expected response:
+```json
+{"status": "ok"}
+```
+
+Run this before sending prompts to confirm all model providers loaded correctly. If a provider key is missing from `.env`, the router will still start but will skip that model tier — the `/health` endpoint returns `200` either way, so check `/stats` after your first few requests to verify routing is hitting the models you expect.
+
 ## Requirements
 
 - Python 3.11+
