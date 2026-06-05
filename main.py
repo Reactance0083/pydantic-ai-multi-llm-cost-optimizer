@@ -35,22 +35,24 @@ if GROQ_API_KEY:
 
 
 # ── Cost table (USD per 1k tokens, input/output) ──────────────────────────────
+# Approx per-1K-token USD costs (verify against current provider pricing pages).
 MODEL_COSTS = {
     "anthropic/claude-haiku-4-5":         {"input": 0.00025, "output": 0.00125},
-    "anthropic/claude-sonnet-4-5":        {"input": 0.003,   "output": 0.015},
-    "anthropic/claude-opus-4-5":          {"input": 0.015,   "output": 0.075},
-    "groq/llama-3.1-8b-instant":          {"input": 0.00005, "output": 0.00008},
+    "anthropic/claude-sonnet-4-6":        {"input": 0.003,   "output": 0.015},
+    "anthropic/claude-opus-4-7":          {"input": 0.015,   "output": 0.075},
     "groq/llama-3.3-70b-versatile":       {"input": 0.00059, "output": 0.00079},
-    "openai/gpt-4o-mini":                 {"input": 0.00015, "output": 0.0006},
-    "openai/gpt-4o":                      {"input": 0.0025,  "output": 0.01},
+    "groq/llama-3.1-8b-instant":          {"input": 0.00005, "output": 0.00008},
+    "openai/gpt-4.1-mini":                {"input": 0.0004,  "output": 0.0016},
+    "openai/gpt-4.1":                     {"input": 0.002,   "output": 0.008},
+    "openai/gpt-5.5":                     {"input": 0.005,   "output": 0.015},
 }
 
 # Available models in priority order (cheapest → most capable)
 MODELS_BY_tier = {
     "fast":     ["groq/llama-3.1-8b-instant", "anthropic/claude-haiku-4-5"],
-    "standard": ["groq/llama-3.3-70b-versatile", "openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"],
-    "quality":  ["anthropic/claude-sonnet-4-5", "openai/gpt-4o"],
-    "max":      ["anthropic/claude-opus-4-5"],
+    "standard": ["groq/llama-3.3-70b-versatile", "openai/gpt-4.1-mini", "anthropic/claude-haiku-4-5"],
+    "quality":  ["anthropic/claude-sonnet-4-6", "openai/gpt-4.1"],
+    "max":      ["anthropic/claude-opus-4-7", "openai/gpt-5.5"],
 }
 
 # In-memory stats (replace with Redis/DB for production)
@@ -91,9 +93,9 @@ router = Agent(
         f"Available models: {', '.join(AVAILABLE_MODELS)}\n"
         f"Rules:\n"
         f"- 'fast' quality: prefer groq models (ultra cheap, good for simple tasks)\n"
-        f"- 'standard' quality: prefer haiku or gpt-4o-mini (cheap + capable)\n"
-        f"- 'quality' quality: use sonnet or gpt-4o (complex reasoning, long outputs)\n"
-        f"- 'max' quality: use claude-opus only (hardest tasks, highest accuracy required)\n"
+        f"- 'standard' quality: prefer haiku or gpt-4.1-mini (cheap + capable)\n"
+        f"- 'quality' quality: use sonnet or gpt-4.1 (complex reasoning, long outputs)\n"
+        f"- 'max' quality: use claude-opus or gpt-5.5 (hardest tasks, highest accuracy required)\n"
         f"- Code generation always benefits from sonnet+ even at standard quality\n"
         f"- Translation and summarization work well with haiku/groq\n"
         f"- Only select groq models if GROQ_API_KEY is available\n"
