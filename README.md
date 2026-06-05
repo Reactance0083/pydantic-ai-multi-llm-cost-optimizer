@@ -62,10 +62,11 @@ Response:
 |-------|----------|-----------|---------|
 | groq/llama-3.1-8b-instant | $0.00005 | $0.00008 | Fast, simple tasks |
 | anthropic/claude-haiku-4-5 | $0.00025 | $0.00125 | Structured outputs, classification |
-| openai/gpt-4o-mini | $0.00015 | $0.0006 | General tasks, good value |
-| anthropic/claude-sonnet-4-5 | $0.003 | $0.015 | Code, complex reasoning |
-| openai/gpt-4o | $0.0025 | $0.01 | Complex tasks |
-| anthropic/claude-opus-4-5 | $0.015 | $0.075 | Hardest tasks only |
+| openai/gpt-4.1-mini | $0.0004 | $0.0016 | General tasks, good value |
+| anthropic/claude-sonnet-4-6 | $0.003 | $0.015 | Code, complex reasoning |
+| openai/gpt-4.1 | $0.002 | $0.008 | Complex tasks |
+| anthropic/claude-opus-4-7 | $0.015 | $0.075 | Hardest tasks only |
+| openai/gpt-5.5 | $0.005 | $0.015 | Flagship reasoning, hardest tasks |
 
 ## Quality Tiers
 
