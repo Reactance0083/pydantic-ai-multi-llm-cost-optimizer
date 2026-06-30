@@ -1,16 +1,33 @@
 # Multi-LLM Cost Optimizer
 
-FastAPI starter template for routing LLM prompts across configured providers and tracking estimated per-model spend.
+A FastAPI starter for developers who want a practical way to route LLM requests across configured providers, inspect estimated spend, and avoid starting from a blank repo.
 
-This public repository is the free trust-building starter. It gives you the working source code, basic setup, and a no-credential smoke test so you can inspect the approach before buying anything.
+This repository is the free trust and education layer. It gives you readable source code, basic local setup, and a no-credential smoke test so you can inspect the approach before buying anything.
 
-The paid Gumroad product is a **Production Acceleration Kit**. It adds deployment guidance, hardening checklists, routing policy guidance, premium examples, buyer verification steps, architecture decisions, and versioned release notes. It is for developers who want to move faster from "this runs locally" to "I know how to deploy, verify, and adapt this safely."
+The paid Gumroad product is the **$29 Production Acceleration Kit**. It exists for developers who like the starter and want to save implementation time with deployment guidance, production hardening, routing playbooks, operations checklists, premium examples, buyer verification steps, architecture notes, commercial license notes, and version history.
 
-Paid kit: https://reactance0083.gumroad.com/l/ztmlv
+Start here:
+
+| Path | Best for | Link |
+|---|---|---|
+| Free GitHub starter | Inspecting the code, running the basic app, and deciding whether the approach fits | [Use this repo](https://github.com/Reactance0083/pydantic-ai-multi-llm-cost-optimizer) |
+| $29 Production Acceleration Kit | Moving faster from local starter to safer deployment and verification | [Get the Gumroad kit](https://reactance0083.gumroad.com/l/ztmlv) |
+
+## What Problem This Solves
+
+Building an LLM workflow usually creates the same early questions:
+
+- Which provider/model should this request use?
+- How do I expose routing through a small API?
+- How do I see estimated per-model spend while testing?
+- What should I verify before putting this behind a real workflow?
+- What production notes, hardening decisions, and examples do I need before adapting it?
+
+The free starter answers the first implementation questions. The paid kit helps with the deployment, hardening, verification, and operating questions that usually consume extra time after the code runs locally.
 
 ## Free vs Paid
 
-| Need | Free GitHub repo | Gumroad Production Acceleration Kit |
+| Need | Free GitHub starter | $29 Production Acceleration Kit |
 |---|---:|---:|
 | Working FastAPI starter source | Yes | Yes |
 | Basic README setup | Yes | Yes |
@@ -27,9 +44,9 @@ Paid kit: https://reactance0083.gumroad.com/l/ztmlv
 | Optional provider test plan | No | Yes |
 | Architecture decision notes | No | Yes |
 | Commercial license notes | No | Yes |
-| Changelog and versioned release bundle | No | Yes |
+| Changelog and version history | No | Yes |
 
-Use the free repo to learn and evaluate. Buy the Gumroad kit if the approach fits and you want the implementation guidance that saves deployment and verification time.
+Use the free repo to learn and evaluate. Buy the Gumroad kit if the approach fits and the premium material would save you deployment, hardening, routing, and verification time.
 
 ## What Works
 
@@ -46,6 +63,7 @@ Use the free repo to learn and evaluate. Buy the Gumroad kit if the approach fit
 - Routing quality depends on your configured providers, prompts, model availability, and API accounts.
 - This template does not guarantee a specific savings percentage.
 - This is a developer starter, not a hosted SaaS.
+- Provider API credits, hosted deployment, and guaranteed support response times are not included.
 
 ## Files In This Free Repo
 
@@ -60,7 +78,7 @@ Use the free repo to learn and evaluate. Buy the Gumroad kit if the approach fit
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scriptsctivate
 pip install -r requirements.txt
 copy .env.example .env
 python smoke_test.py
@@ -92,7 +110,7 @@ GROQ_API_KEY=your_groq_key
 ```bash
 curl -X POST http://localhost:8002/complete ^
   -H "Content-Type: application/json" ^
-  -d "{\"prompt\":\"Summarize REST vs GraphQL\",\"quality\":\"standard\",\"task_type\":\"general\"}"
+  -d "{"prompt":"Summarize REST vs GraphQL","quality":"standard","task_type":"general"}"
 ```
 
 ## Quality Tiers
@@ -108,8 +126,6 @@ curl -X POST http://localhost:8002/complete ^
 
 The free repo is enough if you only want to study or adapt the starter yourself.
 
-The paid kit exists for developers who want the operational material that usually gets rebuilt from scratch: deployment steps, hardening decisions, routing policies, verification checklists, examples, and release history. It sells implementation acceleration, not hidden magic.
+The paid kit exists for developers who want the operational material that usually gets rebuilt from scratch: deployment steps, hardening decisions, routing policies, verification checklists, examples, architecture notes, license notes, and release history. It sells implementation acceleration, not hidden magic.
 
-## License and Support
-
-This public starter is provided as a code reference. The Gumroad package includes the premium implementation assets and future package updates when released. Provider API credits, hosted deployment, and guaranteed support response times are not included.
+Next step: [inspect the free starter](https://github.com/Reactance0083/pydantic-ai-multi-llm-cost-optimizer), then buy the [$29 Production Acceleration Kit](https://reactance0083.gumroad.com/l/ztmlv) if the premium guidance would save you time.
