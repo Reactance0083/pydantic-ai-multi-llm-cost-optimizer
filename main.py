@@ -1,76 +1,74 @@
 """
 Multi-LLM Cost Optimizer
-Routes prompts to the cheapest model that meets quality requirements.
-Uses pydantic-ai for structured routing decisions and litellm for unified model calls.
 
-Endpoints:
-  POST /complete    — Route and complete a prompt
-  GET  /stats       — Cost/usage breakdown by model
-  GET  /health      — Health check
+Routes prompts to a lower-cost model when the requested quality tier allows it,
+executes the request through LiteLLM, and tracks estimated usage cost.
 """
-import sys, os, time
-sys.path.insert(0, r"C:\pylib")
 
-from fastapi import FastAPI
-from pydantic import BaseModel
-from pydantic_ai import Agent
+import os
+import time
+from importlib import import_module
+from functools import lru_cache
+
 from dotenv import load_dotenv
-import litellm
-import httpx
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 load_dotenv()
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY", "")    # optional
-GROQ_API_KEY      = os.getenv("GROQ_API_KEY", "")      # optional (very cheap)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-if not ANTHROPIC_API_KEY:
-    raise RuntimeError("Missing ANTHROPIC_API_KEY")
+for env_name, env_value in {
+    "ANTHROPIC_API_KEY": ANTHROPIC_API_KEY,
+    "OPENAI_API_KEY": OPENAI_API_KEY,
+    "GROQ_API_KEY": GROQ_API_KEY,
+}.items():
+    if env_value:
+        os.environ[env_name] = env_value
 
-os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
-if OPENAI_API_KEY:
-    os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-if GROQ_API_KEY:
-    os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 
-
-# ── Cost table (USD per 1k tokens, input/output) ──────────────────────────────
-# Approx per-1K-token USD costs (verify against current provider pricing pages).
+# Example USD pricing per 1K tokens. Verify against provider pricing pages
+# before using the estimates for billing or finance decisions.
 MODEL_COSTS = {
-    "anthropic/claude-haiku-4-5":         {"input": 0.00025, "output": 0.00125},
-    "anthropic/claude-sonnet-4-6":        {"input": 0.003,   "output": 0.015},
-    "anthropic/claude-opus-4-7":          {"input": 0.015,   "output": 0.075},
-    "groq/llama-3.3-70b-versatile":       {"input": 0.00059, "output": 0.00079},
-    "groq/llama-3.1-8b-instant":          {"input": 0.00005, "output": 0.00008},
-    "openai/gpt-4.1-mini":                {"input": 0.0004,  "output": 0.0016},
-    "openai/gpt-4.1":                     {"input": 0.002,   "output": 0.008},
-    "openai/gpt-5.5":                     {"input": 0.005,   "output": 0.015},
+    "anthropic/claude-haiku-4-5-20251001": {"input": 0.001, "output": 0.005},
+    "anthropic/claude-sonnet-4-5-20250929": {"input": 0.003, "output": 0.015},
+    "anthropic/claude-opus-4-6-20260205": {"input": 0.005, "output": 0.025},
+    "groq/llama-3.1-8b-instant": {"input": 0.00005, "output": 0.00008},
+    "groq/llama-3.3-70b-versatile": {"input": 0.00059, "output": 0.00079},
+    "openai/gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},
+    "openai/gpt-4.1": {"input": 0.002, "output": 0.008},
 }
 
-# Available models in priority order (cheapest → most capable)
-MODELS_BY_tier = {
-    "fast":     ["groq/llama-3.1-8b-instant", "anthropic/claude-haiku-4-5"],
-    "standard": ["groq/llama-3.3-70b-versatile", "openai/gpt-4.1-mini", "anthropic/claude-haiku-4-5"],
-    "quality":  ["anthropic/claude-sonnet-4-6", "openai/gpt-4.1"],
-    "max":      ["anthropic/claude-opus-4-7", "openai/gpt-5.5"],
+MODELS_BY_TIER = {
+    "fast": ["groq/llama-3.1-8b-instant", "anthropic/claude-haiku-4-5-20251001"],
+    "standard": [
+        "groq/llama-3.3-70b-versatile",
+        "openai/gpt-4.1-mini",
+        "anthropic/claude-haiku-4-5-20251001",
+    ],
+    "quality": ["anthropic/claude-sonnet-4-5-20250929", "openai/gpt-4.1"],
+    "max": [
+        "anthropic/claude-opus-4-6-20260205",
+        "anthropic/claude-sonnet-4-5-20250929",
+    ],
 }
 
-# In-memory stats (replace with Redis/DB for production)
 _stats: dict[str, dict] = {}
 
 
-# ── Pydantic models ───────────────────────────────────────────────────────────
 class CompletionRequest(BaseModel):
     prompt: str
     max_tokens: int = 1024
-    quality: str = "standard"  # fast | standard | quality | max
-    task_type: str = "general" # general | code | creative | analysis | translation
+    quality: str = "standard"
+    task_type: str = "general"
 
 
 class RoutingDecision(BaseModel):
-    model: str   # exact litellm model string from MODEL_COSTS keys
-    reason: str  # 1-sentence justification
-    expected_tokens: int  # rough output token estimate
+    model: str
+    reason: str
+    expected_tokens: int
 
 
 class CompletionResponse(BaseModel):
@@ -82,35 +80,100 @@ class CompletionResponse(BaseModel):
     latency_ms: int
 
 
-# ── pydantic-ai router ────────────────────────────────────────────────────────
-AVAILABLE_MODELS = list(MODEL_COSTS.keys())
-
-router = Agent(
-    "anthropic:claude-haiku-4-5",
-    result_type=RoutingDecision,
-    system_prompt=(
-        f"You are a cost-optimization router. Select the cheapest model that can handle the task well.\n"
-        f"Available models: {', '.join(AVAILABLE_MODELS)}\n"
-        f"Rules:\n"
-        f"- 'fast' quality: prefer groq models (ultra cheap, good for simple tasks)\n"
-        f"- 'standard' quality: prefer haiku or gpt-4.1-mini (cheap + capable)\n"
-        f"- 'quality' quality: use sonnet or gpt-4.1 (complex reasoning, long outputs)\n"
-        f"- 'max' quality: use claude-opus or gpt-5.5 (hardest tasks, highest accuracy required)\n"
-        f"- Code generation always benefits from sonnet+ even at standard quality\n"
-        f"- Translation and summarization work well with haiku/groq\n"
-        f"- Only select groq models if GROQ_API_KEY is available\n"
-        f"Return the exact model string from the available list."
-    ),
-)
+class ModelInfo(BaseModel):
+    available: list[str]
+    configured: list[str]
+    costs: dict[str, dict[str, float]]
+    note: str
 
 
-# ── FastAPI app ───────────────────────────────────────────────────────────────
-app = FastAPI(title="Multi-LLM Cost Optimizer", version="1.0.0")
+app = FastAPI(title="Multi-LLM Cost Optimizer", version="1.0.1")
 
 
-@app.post("/complete", response_model=CompletionResponse)
-async def complete(req: CompletionRequest):
-    # Step 1: Route to cheapest appropriate model
+def provider_is_configured(model: str) -> bool:
+    if model.startswith("anthropic/"):
+        return bool(ANTHROPIC_API_KEY)
+    if model.startswith("openai/"):
+        return bool(OPENAI_API_KEY)
+    if model.startswith("groq/"):
+        return bool(GROQ_API_KEY)
+    return False
+
+
+def configured_models() -> list[str]:
+    return [model for model in MODEL_COSTS if provider_is_configured(model)]
+
+
+def choose_fallback_model(quality: str) -> str:
+    candidates = MODELS_BY_TIER.get(quality, MODELS_BY_TIER["standard"])
+    for model in candidates:
+        if provider_is_configured(model):
+            return model
+    raise HTTPException(
+        status_code=400,
+        detail="No API key is configured for the requested quality tier.",
+    )
+
+
+@lru_cache(maxsize=1)
+def get_router():
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status_code=400,
+            detail="ANTHROPIC_API_KEY is required for pydantic-ai routing.",
+        )
+    try:
+        Agent = import_module("pydantic_ai").Agent
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                "Provider routing requires optional dependencies. "
+                "Install them with: pip install -r requirements-providers.txt"
+            ),
+        ) from exc
+
+    system_prompt = (
+        "You are a cost-optimization router. Select the cheapest configured "
+        "model that can handle the task well.\n"
+        f"Configured models: {', '.join(configured_models())}\n"
+        "Rules:\n"
+        "- fast quality: prefer Groq models for simple tasks when configured\n"
+        "- standard quality: prefer Groq 70B, GPT-4.1 mini, or Claude Haiku\n"
+        "- quality tier: use Claude Sonnet or GPT-4.1\n"
+        "- max tier: use Claude Opus or Claude Sonnet\n"
+        "- code generation usually benefits from the quality tier or higher\n"
+        "Return the exact model string from the configured model list."
+    )
+
+    try:
+        return Agent(
+            "anthropic:claude-haiku-4-5-20251001",
+            output_type=RoutingDecision,
+            system_prompt=system_prompt,
+        )
+    except TypeError:
+        return Agent(
+            "anthropic:claude-haiku-4-5-20251001",
+            result_type=RoutingDecision,
+            system_prompt=system_prompt,
+        )
+
+
+def extract_routing_decision(routing_result) -> RoutingDecision:
+    decision = getattr(routing_result, "output", None)
+    if decision is None:
+        decision = getattr(routing_result, "data", None)
+    if isinstance(decision, RoutingDecision):
+        return decision
+    return RoutingDecision(
+        model=choose_fallback_model("standard"),
+        reason="Router returned an unexpected shape, so the app used the standard fallback model.",
+        expected_tokens=512,
+    )
+
+
+async def route_request(req: CompletionRequest) -> RoutingDecision:
     routing_prompt = (
         f"Task type: {req.task_type}\n"
         f"Quality tier: {req.quality}\n"
@@ -118,44 +181,78 @@ async def complete(req: CompletionRequest):
         f"Max tokens: {req.max_tokens}\n"
         f"Prompt preview: {req.prompt[:300]}"
     )
-    routing_result = await router.run(routing_prompt)
-    decision = routing_result.data
 
-    model = decision.model
-    # Fallback if router picks unavailable model
-    if model not in MODEL_COSTS:
-        model = "anthropic/claude-haiku-4-5"
+    try:
+        routing_result = await get_router().run(routing_prompt)
+        decision = extract_routing_decision(routing_result)
+    except HTTPException:
+        raise
+    except Exception:
+        model = choose_fallback_model(req.quality)
+        return RoutingDecision(
+            model=model,
+            reason="Router failed, so the app used the configured fallback for this quality tier.",
+            expected_tokens=req.max_tokens,
+        )
 
-    # Step 2: Execute via litellm
+    if decision.model not in MODEL_COSTS or not provider_is_configured(decision.model):
+        decision.model = choose_fallback_model(req.quality)
+    return decision
+
+
+@app.post("/complete", response_model=CompletionResponse)
+async def complete(req: CompletionRequest):
+    if not configured_models():
+        raise HTTPException(
+            status_code=400,
+            detail="Set at least one provider API key before calling /complete.",
+        )
+    try:
+        litellm = import_module("litellm")
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                "Provider calls require optional dependencies. "
+                "Install them with: pip install -r requirements-providers.txt"
+            ),
+        ) from exc
+
+    decision = await route_request(req)
+
     start = time.monotonic()
     response = litellm.completion(
-        model=model,
+        model=decision.model,
         messages=[{"role": "user", "content": req.prompt}],
         max_tokens=req.max_tokens,
     )
     latency_ms = int((time.monotonic() - start) * 1000)
 
-    # Step 3: Calculate cost
     usage = response.usage
-    input_tok  = usage.prompt_tokens
-    output_tok = usage.completion_tokens
-    costs      = MODEL_COSTS.get(model, {"input": 0, "output": 0})
-    cost_usd   = (input_tok * costs["input"] + output_tok * costs["output"]) / 1000
+    input_tokens = usage.prompt_tokens
+    output_tokens = usage.completion_tokens
+    costs = MODEL_COSTS.get(decision.model, {"input": 0, "output": 0})
+    cost_usd = (
+        input_tokens * costs["input"] + output_tokens * costs["output"]
+    ) / 1000
 
-    # Step 4: Update stats
-    if model not in _stats:
-        _stats[model] = {"calls": 0, "total_cost": 0.0, "total_tokens": 0}
-    _stats[model]["calls"]        += 1
-    _stats[model]["total_cost"]   += cost_usd
-    _stats[model]["total_tokens"] += input_tok + output_tok
+    if decision.model not in _stats:
+        _stats[decision.model] = {
+            "calls": 0,
+            "total_cost": 0.0,
+            "total_tokens": 0,
+        }
+    _stats[decision.model]["calls"] += 1
+    _stats[decision.model]["total_cost"] += cost_usd
+    _stats[decision.model]["total_tokens"] += input_tokens + output_tokens
 
     text = response.choices[0].message.content or ""
 
     return CompletionResponse(
         text=text,
-        model_used=model,
-        input_tokens=input_tok,
-        output_tokens=output_tok,
+        model_used=decision.model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
         cost_usd=round(cost_usd, 6),
         latency_ms=latency_ms,
     )
@@ -171,16 +268,22 @@ def stats():
     }
 
 
-@app.get("/models")
+@app.get("/models", response_model=ModelInfo)
 def models():
-    return {"available": AVAILABLE_MODELS, "costs": MODEL_COSTS}
+    return ModelInfo(
+        available=list(MODEL_COSTS.keys()),
+        configured=configured_models(),
+        costs=MODEL_COSTS,
+        note="Cost values are example estimates. Verify provider pricing before relying on them.",
+    )
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "configured_models": configured_models()}
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002, reload=True)
+
+    uvicorn.run(app, host="0.0.0.0", port=8002)
