@@ -1,3 +1,5 @@
+> **Commercial status:** Package verified locally; Gumroad sale is temporarily paused until the verified ZIP is uploaded through the dashboard and checkout/delivery is re-tested. Cost values are examples, not guarantees.
+
 # Multi-LLM Cost Optimizer
 
 FastAPI starter template for routing LLM prompts across configured providers and tracking estimated per-model spend.
