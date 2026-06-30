@@ -2,14 +2,34 @@
 
 FastAPI starter template for routing LLM prompts across configured providers and tracking estimated per-model spend.
 
-The verified base install uses FastAPI endpoints for model visibility, health checks, and usage stats.
-Optional provider execution uses:
+This public repository is the free trust-building starter. It gives you the working source code, basic setup, and a no-credential smoke test so you can inspect the approach before buying anything.
 
-- `pydantic-ai` for the routing decision.
-- `litellm` for provider calls.
-- FastAPI endpoints for completion, model visibility, health checks, and usage stats.
+The paid Gumroad product is a **Production Acceleration Kit**. It adds deployment guidance, hardening checklists, routing policy guidance, premium examples, buyer verification steps, architecture decisions, and versioned release notes. It is for developers who want to move faster from "this runs locally" to "I know how to deploy, verify, and adapt this safely."
 
-This is a developer starter, not a hosted SaaS. You run it with your own API keys.
+Paid kit: https://reactance0083.gumroad.com/l/ztmlv
+
+## Free vs Paid
+
+| Need | Free GitHub repo | Gumroad Production Acceleration Kit |
+|---|---:|---:|
+| Working FastAPI starter source | Yes | Yes |
+| Basic README setup | Yes | Yes |
+| `.env.example` | Yes | Yes |
+| Base requirements | Yes | Yes |
+| Optional provider requirements | Yes | Yes |
+| No-credential smoke test | Yes | Yes |
+| Production deployment guide | No | Yes |
+| Production hardening guide | No | Yes |
+| Routing policy playbook | No | Yes |
+| Operations checklist | No | Yes |
+| Premium request examples | No | Yes |
+| Buyer verification checklist | No | Yes |
+| Optional provider test plan | No | Yes |
+| Architecture decision notes | No | Yes |
+| Commercial license notes | No | Yes |
+| Changelog and versioned release bundle | No | Yes |
+
+Use the free repo to learn and evaluate. Buy the Gumroad kit if the approach fits and you want the implementation guidance that saves deployment and verification time.
 
 ## What Works
 
@@ -25,11 +45,12 @@ This is a developer starter, not a hosted SaaS. You run it with your own API key
 - Stats are stored in memory. Use Redis, Postgres, or another durable store before production deployment.
 - Routing quality depends on your configured providers, prompts, model availability, and API accounts.
 - This template does not guarantee a specific savings percentage.
+- This is a developer starter, not a hosted SaaS.
 
-## Files Included
+## Files In This Free Repo
 
 - `main.py` - FastAPI app and routing logic.
-- `requirements.txt` - Python dependencies.
+- `requirements.txt` - Base Python dependencies.
 - `requirements-providers.txt` - Optional dependencies for live provider routing/calls.
 - `.env.example` - Provider key template.
 - `smoke_test.py` - No-credential smoke test for import/startup and safe endpoints.
@@ -42,9 +63,16 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
+python smoke_test.py
+uvicorn main:app --reload --port 8002
 ```
 
-The base install is enough to run `/health`, `/models`, `/stats`, and `python smoke_test.py`.
+Open:
+
+- `http://localhost:8002/health`
+- `http://localhost:8002/models`
+- `http://localhost:8002/stats`
+
 For live LLM calls through `/complete`, also install the optional provider stack:
 
 ```bash
@@ -59,82 +87,13 @@ OPENAI_API_KEY=your_openai_key
 GROQ_API_KEY=your_groq_key
 ```
 
-Run the API:
-
-```bash
-uvicorn main:app --reload --port 8002
-```
-
-Open:
-
-- `http://localhost:8002/health`
-- `http://localhost:8002/models`
-- `http://localhost:8002/stats`
-
-## No-Credential Smoke Test
-
-Use this before adding API keys:
-
-```bash
-python smoke_test.py
-```
-
-The smoke test verifies that the app imports, starts, and exposes the safe endpoints without making provider calls.
-
 ## API Usage
-
-### POST /complete
-
-Requires `pip install -r requirements-providers.txt` and at least one provider API key.
 
 ```bash
 curl -X POST http://localhost:8002/complete ^
   -H "Content-Type: application/json" ^
   -d "{\"prompt\":\"Summarize REST vs GraphQL\",\"quality\":\"standard\",\"task_type\":\"general\"}"
 ```
-
-Example response shape:
-
-```json
-{
-  "text": "...",
-  "model_used": "anthropic/claude-haiku-4-5-20251001",
-  "input_tokens": 42,
-  "output_tokens": 218,
-  "cost_usd": 0.001132,
-  "latency_ms": 847
-}
-```
-
-### GET /stats
-
-```json
-{
-  "models": {
-    "anthropic/claude-haiku-4-5-20251001": {
-      "calls": 3,
-      "total_cost": 0.0062,
-      "total_tokens": 1240
-    }
-  },
-  "total_cost_usd": 0.0062,
-  "total_calls": 3
-}
-```
-
-## Example Cost Table
-
-These are example USD estimates per 1K input/output tokens. Verify them before relying on the numbers.
-
-| Model | Input/1K | Output/1K | Best For |
-|---|---:|---:|---|
-| groq/llama-3.1-8b-instant | $0.00005 | $0.00008 | Fast, simple tasks |
-| groq/llama-3.3-70b-versatile | $0.00059 | $0.00079 | Standard low-cost tasks |
-| anthropic/claude-haiku-4-5-20251001 | $0.001 | $0.005 | Structured routing and classification |
-| openai/gpt-4.1-mini | $0.0004 | $0.0016 | General tasks |
-| anthropic/claude-sonnet-4-5-20250929 | $0.003 | $0.015 | Code and complex reasoning |
-| openai/gpt-4.1 | $0.002 | $0.008 | Complex tasks |
-| anthropic/claude-opus-4-6-20260205 | $0.005 | $0.025 | Highest-quality tier |
 
 ## Quality Tiers
 
@@ -145,26 +104,12 @@ These are example USD estimates per 1K input/output tokens. Verify them before r
 | `quality` | Code generation, complex analysis, and higher-stakes responses |
 | `max` | Hardest prompts where cost is secondary to quality |
 
-## Production Notes
+## Why The Paid Kit Exists
 
-Before using this in production:
+The free repo is enough if you only want to study or adapt the starter yourself.
 
-- Replace in-memory stats with durable storage.
-- Add authentication and rate limiting.
-- Add provider-specific retry and timeout policies.
-- Log routing decisions for review.
-- Confirm model availability and pricing for your accounts.
-
-## Commercial Readiness Checklist
-
-- Install from a clean ZIP extraction.
-- Install base dependencies with `pip install -r requirements.txt`.
-- Run `python smoke_test.py`.
-- Start `uvicorn main:app --port 8002`.
-- Verify `/health`, `/models`, and `/stats`.
-- For provider execution, install `requirements-providers.txt`, configure API keys, make one controlled `/complete` call, and confirm `/stats` increments.
-- Confirm the Gumroad listing describes this as a starter template, not a hosted product or guaranteed-cost-savings system.
+The paid kit exists for developers who want the operational material that usually gets rebuilt from scratch: deployment steps, hardening decisions, routing policies, verification checklists, examples, and release history. It sells implementation acceleration, not hidden magic.
 
 ## License and Support
 
-Buying the package includes the source files listed above and future package updates when released. It does not include provider API credits or a hosted deployment.
+This public starter is provided as a code reference. The Gumroad package includes the premium implementation assets and future package updates when released. Provider API credits, hosted deployment, and guaranteed support response times are not included.
