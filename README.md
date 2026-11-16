@@ -77,8 +77,13 @@ Costs use the example table in `main.py`; they are not billing records, and rout
 
 The starter does not implement production authentication, durable usage storage, or rate limiting. It is a local developer project, with no guaranteed savings percentage or hosted-service SLA.
 
+## Maintenance check
+
+On November 16, 2026, the credential-free smoke test passed, the Anthropic model IDs were refreshed, and the optional router dependencies were pinned to a compatible PydanticAI/Anthropic SDK pair. Provider completions and cost savings were not validated against live accounts.
+
 ## Additional implementation material
 
 The existing [Production Acceleration Kit](https://reactance0083.gumroad.com/l/ztmlv) is a separate commercial offering. This repository can be inspected and run locally without purchasing it; provider credits and hosting are separate.
 
-Developed with AI assistance. Documentation reviewed against the public source on November 10, 2026.
+Developed with AI assistance. Documentation reviewed against the public source on November 16, 2026.
+

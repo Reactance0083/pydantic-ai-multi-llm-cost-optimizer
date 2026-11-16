@@ -33,8 +33,8 @@ for env_name, env_value in {
 # before using the estimates for billing or finance decisions.
 MODEL_COSTS = {
     "anthropic/claude-haiku-4-5-20251001": {"input": 0.001, "output": 0.005},
-    "anthropic/claude-sonnet-4-5-20250929": {"input": 0.003, "output": 0.015},
-    "anthropic/claude-opus-4-6-20260205": {"input": 0.005, "output": 0.025},
+    "anthropic/claude-sonnet-4-6": {"input": 0.003, "output": 0.015},
+    "anthropic/claude-opus-4-6": {"input": 0.005, "output": 0.025},
     "groq/llama-3.1-8b-instant": {"input": 0.00005, "output": 0.00008},
     "groq/llama-3.3-70b-versatile": {"input": 0.00059, "output": 0.00079},
     "openai/gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},
@@ -48,10 +48,10 @@ MODELS_BY_TIER = {
         "openai/gpt-4.1-mini",
         "anthropic/claude-haiku-4-5-20251001",
     ],
-    "quality": ["anthropic/claude-sonnet-4-5-20250929", "openai/gpt-4.1"],
+    "quality": ["anthropic/claude-sonnet-4-6", "openai/gpt-4.1"],
     "max": [
-        "anthropic/claude-opus-4-6-20260205",
-        "anthropic/claude-sonnet-4-5-20250929",
+        "anthropic/claude-opus-4-6",
+        "anthropic/claude-sonnet-4-6",
     ],
 }
 
@@ -287,3 +287,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8002)
+
